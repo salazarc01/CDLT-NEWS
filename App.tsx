@@ -71,13 +71,11 @@ const App: React.FC = () => {
     if (cached.length >= 30) {
       setStories(cached);
       setLoading(false);
-      // Sincronización silenciosa inicial
       updateNews(true);
     } else {
       updateNews(false);
     }
     
-    // Intervalo de actualización cada 6 horas (21600000 ms)
     const interval = setInterval(() => updateNews(true), 21600000);
     return () => clearInterval(interval);
   }, []);
@@ -94,11 +92,17 @@ const App: React.FC = () => {
         author: sharingNews.author,
         imageUrl: sharingNews.imageUrl
       });
+      
       if (shareContent) {
-        await shareToPlatform(platform, { blob: shareContent.blob, text: shareContent.text });
+        const success = await shareToPlatform(platform, { blob: shareContent.blob, text: shareContent.text });
+        if (!success) {
+          // Si todo falla, al menos el texto
+          window.open(`https://wa.me/?text=${encodeURIComponent(shareContent.text)}`, '_blank');
+        }
       }
     } catch (e) {
       console.error('Error sharing news:', e);
+      alert("Hubo un problema al preparar el reporte.");
     } finally {
       setIsGeneratingShare(false);
       setSharingNews(null);
