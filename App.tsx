@@ -35,7 +35,7 @@ const App: React.FC = () => {
       id: 'venezuela-crisis-2024',
       title: 'Maduro ante la Justicia de Nueva York: Delcy Rodríguez asume Presidencia Encargada',
       summary: 'Giro histórico en Venezuela. Este lunes, Nicolás Maduro y Cilia Flores comparecen ante un juez en Nueva York. Paralelamente, el Ministro de la Defensa, Vladimir Padrino López, anunció en cadena nacional el respaldo total del ejército a la vicepresidenta Delcy Rodríguez para su juramentación como presidenta interina del país.',
-      content: `La mañana de este lunes marca un hito sin precedentes en la historia republicana de Venezuela...`,
+      content: `La mañana de este lunes marca un hito sin precedentes en la historia republicana de Venezuela. Tras una serie de negociaciones diplomáticas de alto nivel, se confirmó que Nicolás Maduro y su esposa Cilia Flores han ingresado a territorio estadounidense para comparecer ante una corte federal en el Distrito Sur de Nueva York.\n\nMientras este proceso judicial se desarrolla en el extranjero, en Caracas el ambiente es de máxima tensión y transformación institucional. El General en Jefe Vladimir Padrino López, rodeado del alto mando militar, realizó una aparición televisiva crucial. En su discurso, Padrino enfatizó que la Fuerza Armada Nacional Bolivariana (FANB) reconoce y apoya plenamente la sucesión constitucional inmediata.\n\n"Cumpliendo con los protocolos de estabilidad nacional, el ejército respalda la juramentación de la Vicepresidenta Ejecutiva Delcy Rodríguez como Presidenta Encargada de la República", declaró el alto oficial ante las cámaras. Rodríguez, quien ha mantenido un perfil estratégico en el gabinete, asume el mando en un momento de transición crítica bajo la mirada atenta de la comunidad internacional.\n\nAnalistas sugieren que este movimiento podría ser parte de un acuerdo mayor para la estabilización del país, aunque las reacciones en las calles de las principales ciudades venezolanas aún son de cautela y expectativa. El centro de Caracas permanece bajo estricto control de seguridad mientras se preparan los actos protocolares de la juramentación.`,
       imageUrl: 'https://imagenes.elpais.com/resizer/v2/GA6Y6OUHCZFRBGIL3S3RJSBX3U.jpg?auth=c694a203926bd1bdd50e180b7f5b1a7cb014b794386d80009d78c7579c20e7f7&width=414',
       date: 'AHORA',
       author: 'Corresponsalía CDLT'
@@ -54,7 +54,9 @@ const App: React.FC = () => {
     if (!silent) setLoading(true);
     try {
       const latest = await fetchLatestStories();
-      if (latest && latest.length > 0) {
+      if (latest && latest.length >= 30) {
+        setStories(latest);
+      } else if (latest && latest.length > 0 && stories.length === 0) {
         setStories(latest);
       }
     } catch (e) {
@@ -65,15 +67,15 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    // Intentar cargar caché primero para velocidad inmediata
     const cached = getCachedStories();
-    if (cached.length > 0) {
+    if (cached.length >= 30) {
       setStories(cached);
       setLoading(false);
+      // Actualizar silenciosamente en el fondo
+      updateNews(true);
+    } else {
+      updateNews(false);
     }
-    
-    // Actualizar de la API
-    updateNews(cached.length > 0);
     
     const interval = setInterval(() => updateNews(true), 3600000);
     return () => clearInterval(interval);
@@ -109,7 +111,7 @@ const App: React.FC = () => {
       {/* Novedades Section (Instagram Style) */}
       <section className="py-4 px-3 border-b border-zinc-800 bg-[#0d0d0f]">
         <div className="flex items-center justify-between mb-4 px-1">
-          <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Novedades CDLT</h2>
+          <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Novedades CDLT (+30 diarias)</h2>
           <span className="flex items-center gap-1.5 text-[8px] font-bold text-blue-500">
             <span className={`w-1.5 h-1.5 bg-blue-500 rounded-full ${!loading ? 'animate-pulse' : ''}`}></span> 
             {loading ? 'SINCRONIZANDO...' : 'VIVO'}
@@ -118,7 +120,7 @@ const App: React.FC = () => {
         
         <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 min-h-[90px]">
           {loading && stories.length === 0 ? (
-            Array(5).fill(0).map((_, i) => (
+            Array(10).fill(0).map((_, i) => (
               <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2">
                 <div className="w-14 h-14 rounded-full bg-zinc-800 animate-pulse" />
                 <div className="w-8 h-2 bg-zinc-800 rounded animate-pulse" />

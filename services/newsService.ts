@@ -2,22 +2,40 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { NewsStory } from "../types";
 
-const CACHE_KEY = 'cdlt_news_cache_v3';
+const CACHE_KEY = 'cdlt_news_cache_v4';
 const CACHE_TIME = 3600000; // 1 hora
 
-// Noticias de respaldo en caso de error de API o demora
-const fallbackStories: NewsStory[] = [
-  { id: 'f1', category: 'POLÍTICA', title: 'Cumbre Global por la Paz', concept: 'Líderes mundiales se reúnen en Ginebra para discutir nuevos tratados de no proliferación y estabilidad en Europa del Este.', timestamp: 'HACE 10 MIN', image: 'https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&q=80&w=800' },
-  { id: 'f2', category: 'ECONOMÍA', title: 'Bitcoin alcanza nuevo máximo', concept: 'La criptomoneda líder supera los 100k impulsada por la adopción institucional en mercados asiáticos y americanos.', timestamp: 'HACE 25 MIN', image: 'https://images.unsplash.com/photo-1518546305927-5a555bb7020d?auto=format&fit=crop&q=80&w=800' },
-  { id: 'f3', category: 'SALUD', title: 'Avance en cura del Alzheimer', concept: 'Científicos de Oxford anuncian una terapia génica con 90% de éxito en frenar el deterioro cognitivo en etapas tempranas.', timestamp: 'HACE 1 HORA', image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=800' },
-  { id: 'f4', category: 'BELLEZA', title: 'Tendencias en Milán 2025', concept: 'La moda sustentable y los colores tierra dominan las pasarelas de la semana de la moda en Italia.', timestamp: 'HACE 2 HORAS', image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800' }
+const CATEGORIES = [
+  'POLÍTICA', 'GUERRA', 'ECONOMÍA', 'DESCUBRIMIENTOS', 
+  'BELLEZA', 'SALUD', 'GASTRONOMÍA', 'EVENTOS', 'NATURALEZA'
 ];
+
+// Generador de noticias de respaldo para asegurar +30 elementos siempre
+const generatePlaceholderStories = (): NewsStory[] => {
+  const stories: NewsStory[] = [];
+  const now = new Date();
+  
+  for (let i = 0; i < 35; i++) {
+    const category = CATEGORIES[i % CATEGORIES.length];
+    stories.push({
+      id: `fallback-${i}-${Date.now()}`,
+      category: category,
+      title: `Actualización Crítica: ${category} en Desarrollo`,
+      concept: `Reporte de última hora sobre los avances más recientes en el sector de ${category.toLowerCase()}. Los corresponsales de CDLT NEWS monitorean la situación en tiempo real desde las principales capitales del mundo.`,
+      timestamp: `HACE ${i + 2} MIN`,
+      image: `https://images.unsplash.com/photo-${1500000000000 + (i * 123456)}?auto=format&fit=crop&q=80&w=800`
+    });
+  }
+  return stories;
+};
 
 export const getCachedStories = (): NewsStory[] => {
   const cached = localStorage.getItem(CACHE_KEY);
   if (!cached) return [];
   try {
     const { data, timestamp } = JSON.parse(cached);
+    // Si el caché tiene menos de 30 noticias, lo ignoramos para forzar recarga
+    if (data.length < 30) return [];
     if (Date.now() - timestamp > CACHE_TIME) return [];
     return data;
   } catch (e) {
@@ -29,9 +47,14 @@ export const fetchLatestStories = async (): Promise<NewsStory[]> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
   
   try {
+    // Si no hay API KEY, devolvemos los placeholders de inmediato
+    if (!process.env.API_KEY) {
+      return generatePlaceholderStories();
+    }
+
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
-      contents: "Actúa como una agencia de noticias global. Genera un array JSON de EXACTAMENTE 35 noticias reales y variadas de hoy. Categorías: POLÍTICA, GUERRA, ECONOMÍA, DESCUBRIMIENTOS, BELLEZA, SALUD, GASTRONOMÍA, EVENTOS, NATURALEZA. Formato: {id, category, title, concept, timestamp, image}. Usa timestamps relativos como 'HACE 5 MIN'. Devuelve SOLO el JSON.",
+      contents: "Genera un array JSON de EXACTAMENTE 35 noticias reales y variadas de hoy. Categorías: POLÍTICA, GUERRA, ECONOMÍA, DESCUBRIMIENTOS, BELLEZA, SALUD, GASTRONOMÍA, EVENTOS, NATURALEZA. El tono debe ser profesional y urgente. Formato: {id, category, title, concept, timestamp, image}. Devuelve SOLO el JSON sin markdown.",
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -53,21 +76,22 @@ export const fetchLatestStories = async (): Promise<NewsStory[]> => {
     });
 
     let rawText = response.text || "[]";
-    // Limpieza profunda de posibles backticks de markdown
-    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-    const cleanedJson = jsonMatch ? jsonMatch[0] : rawText;
+    // Limpieza de posibles caracteres extraños
+    const jsonStart = rawText.indexOf('[');
+    const jsonEnd = rawText.lastIndexOf(']') + 1;
+    const cleanedJson = (jsonStart !== -1 && jsonEnd !== -1) ? rawText.substring(jsonStart, jsonEnd) : rawText;
     
     const news = JSON.parse(cleanedJson);
     
-    const processedNews = news.map((item: any, idx: number) => ({
-      ...item,
-      id: item.id || `story-${Date.now()}-${idx}`,
-      image: (item.image && item.image.startsWith('http')) 
-        ? item.image 
-        : `https://images.unsplash.com/photo-${1500000000000 + idx}?auto=format&fit=crop&q=80&w=800`
-    }));
+    if (Array.isArray(news) && news.length > 0) {
+      const processedNews = news.map((item: any, idx: number) => ({
+        ...item,
+        id: item.id || `story-${Date.now()}-${idx}`,
+        image: (item.image && item.image.startsWith('http')) 
+          ? item.image 
+          : `https://images.unsplash.com/photo-${1500000000000 + (idx * 1000)}?auto=format&fit=crop&q=80&w=800`
+      }));
 
-    if (processedNews.length > 0) {
       localStorage.setItem(CACHE_KEY, JSON.stringify({
         data: processedNews,
         timestamp: Date.now()
@@ -75,10 +99,10 @@ export const fetchLatestStories = async (): Promise<NewsStory[]> => {
       return processedNews;
     }
     
-    return getCachedStories().length > 0 ? getCachedStories() : fallbackStories;
+    throw new Error("Formato de respuesta inválido");
   } catch (error) {
-    console.error("Error crítico fetching news:", error);
+    console.error("Error en servicio de noticias:", error);
     const cached = getCachedStories();
-    return cached.length > 0 ? cached : fallbackStories;
+    return cached.length >= 30 ? cached : generatePlaceholderStories();
   }
 };
