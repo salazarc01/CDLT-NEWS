@@ -3,29 +3,46 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CDLT NEWS | Global Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CDLT NEWS | Reportaje Global</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Playfair+Display:ital,wght@0,700;1,700;1,900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #09090b;
+            --accent-blue: #2563eb;
+        }
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #09090b;
+            background-color: var(--bg-color);
             color: #f4f4f5;
             -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
         }
         .serif-font {
             font-family: 'Playfair Display', serif;
         }
-        /* Ocultar scrollbars sin perder funcionalidad */
+        .glass-morphism {
+            background: rgba(13, 13, 15, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        /* Ocultar scrollbars */
         ::-webkit-scrollbar {
             display: none;
         }
         .no-scrollbar {
             -ms-overflow-style: none;
             scrollbar-width: none;
+        }
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .animate-pulse-soft {
+            animation: pulse-soft 2s infinite;
         }
     </style>
 <script type="importmap">
@@ -39,9 +56,8 @@
 }
 </script>
 </head>
-<body class="overflow-x-hidden">
+<body class="antialiased">
     <div id="root"></div>
-    <!-- Script de entrada crucial para que Vercel/Navegador cargue la app -->
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>
