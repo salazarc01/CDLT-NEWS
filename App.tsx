@@ -71,13 +71,14 @@ const App: React.FC = () => {
     if (cached.length >= 30) {
       setStories(cached);
       setLoading(false);
-      // Actualizar silenciosamente en el fondo
+      // Sincronización silenciosa inicial
       updateNews(true);
     } else {
       updateNews(false);
     }
     
-    const interval = setInterval(() => updateNews(true), 3600000);
+    // Intervalo de actualización cada 6 horas (21600000 ms)
+    const interval = setInterval(() => updateNews(true), 21600000);
     return () => clearInterval(interval);
   }, []);
 
@@ -111,10 +112,15 @@ const App: React.FC = () => {
       {/* Novedades Section (Instagram Style) */}
       <section className="py-4 px-3 border-b border-zinc-800 bg-[#0d0d0f]">
         <div className="flex items-center justify-between mb-4 px-1">
-          <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Novedades CDLT (+30 diarias)</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">Novedades CDLT Verificadas</h2>
+            <svg className="w-3 h-3 text-blue-500 fill-current" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+            </svg>
+          </div>
           <span className="flex items-center gap-1.5 text-[8px] font-bold text-blue-500">
             <span className={`w-1.5 h-1.5 bg-blue-500 rounded-full ${!loading ? 'animate-pulse' : ''}`}></span> 
-            {loading ? 'SINCRONIZANDO...' : 'VIVO'}
+            {loading ? 'SINCRONIZANDO...' : 'ACTUALIZADO'}
           </span>
         </div>
         
@@ -134,7 +140,7 @@ const App: React.FC = () => {
                 className="flex-shrink-0 flex flex-col items-center gap-1.5 group outline-none animate-in fade-in duration-500"
               >
                 <div className="p-[2.5px] rounded-full bg-gradient-to-tr from-blue-700 via-zinc-600 to-blue-400 active:scale-95 transition-all">
-                  <div className="w-14 h-14 rounded-full border-[2.5px] border-[#0a0a0c] overflow-hidden bg-zinc-900 flex items-center justify-center text-2xl shadow-xl">
+                  <div className="relative w-14 h-14 rounded-full border-[2.5px] border-[#0a0a0c] overflow-hidden bg-zinc-900 flex items-center justify-center text-2xl shadow-xl">
                     {getCategoryIcon(story.category)}
                   </div>
                 </div>
@@ -163,8 +169,11 @@ const App: React.FC = () => {
                 alt={news.title} 
                 className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
               />
-              <div className="absolute top-3 left-3 bg-blue-600/90 backdrop-blur-sm text-white text-[8px] font-black px-2.5 py-1 rounded-sm uppercase tracking-widest shadow-xl">
+              <div className="absolute top-3 left-3 bg-blue-600/90 backdrop-blur-sm text-white text-[8px] font-black px-2.5 py-1 rounded-sm uppercase tracking-widest shadow-xl flex items-center gap-1">
                 {news.date === 'AHORA' ? 'EXTRA' : 'ESPECIAL'}
+                <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
               </div>
               
               <button 
@@ -185,7 +194,7 @@ const App: React.FC = () => {
                 <span className="w-1 h-1 bg-zinc-800 rounded-full"></span>
                 <span>{news.date}</span>
               </div>
-              <h3 className="text-xl font-bold leading-tight serif-font text-white group-hover:text-blue-400 transition-colors">
+              <h3 className="text-xl font-bold leading-tight serif-font text-white group-hover:text-blue-400 transition-colors flex items-center gap-2">
                 {news.title}
               </h3>
               <p className="text-zinc-400 text-[13px] leading-relaxed font-medium">
