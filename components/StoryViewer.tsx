@@ -89,7 +89,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col h-screen overflow-hidden">
       {/* Progress Bars */}
-      <div className="absolute top-4 left-2 right-2 flex gap-1 z-10">
+      <div className="absolute top-4 left-2 right-2 flex gap-1 z-20">
         {stories.map((_, idx) => (
           <div key={idx} className="h-0.5 flex-1 bg-white/20 rounded-full overflow-hidden">
             <div 
@@ -103,17 +103,17 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
       </div>
 
       {/* Header Info */}
-      <div className="absolute top-8 left-4 right-4 z-10 flex justify-between items-start">
+      <div className="absolute top-8 left-4 right-4 z-20 flex justify-between items-start">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-[12px] border border-white/30 text-white shrink-0 shadow-lg">
             C
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <p className="text-white text-[12px] font-black tracking-tight">
+              <p className="text-white text-[12px] font-black tracking-tight drop-shadow-md">
                 CDLT NEWS
               </p>
-              <svg className="w-3.5 h-3.5 text-blue-500 fill-current" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 text-blue-500 fill-current drop-shadow-md" viewBox="0 0 24 24">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
               </svg>
             </div>
@@ -121,7 +121,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
               <span className="text-[9px] px-1.5 py-0.5 bg-blue-600 text-white rounded-sm font-black uppercase tracking-wider inline-block">
                 {story.category}
               </span>
-              <span className="text-white/50 text-[10px]">• {story.timestamp}</span>
+              <span className="text-white/70 text-[10px] drop-shadow-md">• {story.timestamp}</span>
             </div>
           </div>
         </div>
@@ -142,42 +142,54 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
         </div>
       </div>
 
-      {/* Animated Background GIF */}
-      <div className="absolute inset-0 w-full h-full bg-zinc-900">
+      {/* Animated Background GIF Container */}
+      <div className="absolute inset-0 w-full h-full bg-[#0a0a0c] overflow-hidden">
+        {/* GIF Background - Key helps trigger refresh/transition if needed, though GIFs loop natively */}
         <img 
+          key={story.id}
           src={story.image} 
-          alt="background" 
-          className="w-full h-full object-cover"
+          alt="News Background" 
+          className="w-full h-full object-cover animate-in fade-in duration-500 scale-100"
         />
+        
+        {/* Superior and Inferior Overlays for Contrast */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-transparent to-black/60 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#0a0a0c]/90 pointer-events-none" />
       </div>
 
-      {/* Enhanced Gradients for Readability */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black/95 pointer-events-none" />
-
-      {/* News Text Area with specialized overlay */}
-      <div className="absolute bottom-12 left-5 right-5 z-10 animate-fade-in-up flex flex-col pointer-events-none">
-        <h2 className="text-2xl font-bold text-white leading-tight mb-4 drop-shadow-[0_4px_4px_rgba(0,0,0,1)] serif-font italic">
+      {/* News Text Area with reinforced dark background */}
+      <div className="absolute bottom-10 left-0 right-0 z-10 animate-fade-in-up flex flex-col pointer-events-none px-6">
+        <h2 className="text-[26px] font-black text-white leading-[1.1] mb-5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] serif-font italic tracking-tight">
           {story.title}
         </h2>
-        <div className="max-h-[35vh] overflow-y-auto no-scrollbar">
-          <div className="bg-black/60 backdrop-blur-md p-4 rounded-xl border-l-4 border-blue-600 shadow-2xl">
-            <p className="text-[15px] text-zinc-100 font-semibold leading-relaxed">
+        
+        <div className="max-h-[38vh] overflow-y-auto no-scrollbar">
+          {/* Reinforced dark area for text readability */}
+          <div className="bg-black/75 backdrop-blur-[12px] p-5 rounded-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+            <p className="text-[16px] text-zinc-100 font-bold leading-relaxed tracking-tight">
               {story.concept}
             </p>
           </div>
         </div>
-        <div className="mt-4 flex items-center gap-2">
-          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
-          <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest drop-shadow-md">Noticia Verificada • Hoy</span>
+        
+        <div className="mt-5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_12px_rgba(34,197,94,0.9)]"></div>
+            <span className="text-[10px] font-black text-white/90 uppercase tracking-[0.15em] drop-shadow-md">
+              REPORTE CONFIRMADO HOY
+            </span>
+          </div>
+          <div className="text-[9px] font-bold text-white/40 uppercase tracking-widest">
+            {currentIndex + 1} / {stories.length}
+          </div>
         </div>
       </div>
 
       {/* Navigation Touch Zones */}
       {!showShare && (
-        <div className="absolute inset-0 flex">
-          <div className="w-1/3 h-full" onClick={prevStory} />
-          <div className="w-1/3 h-full" />
-          <div className="w-1/3 h-full" onClick={nextStory} />
+        <div className="absolute inset-0 z-10 flex">
+          <div className="w-1/2 h-full cursor-pointer" onClick={prevStory} title="Anterior" />
+          <div className="w-1/2 h-full cursor-pointer" onClick={nextStory} title="Siguiente" />
         </div>
       )}
 
@@ -188,6 +200,16 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
           isGenerating={isGenerating}
         />
       )}
+
+      <style>{`
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}</style>
     </div>
   );
 };
