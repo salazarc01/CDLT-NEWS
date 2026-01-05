@@ -68,8 +68,8 @@ export const prepareShareContent = async (data: ShareData) => {
 
       canvas.toBlob((blob) => {
         if (blob) {
-          // Formato solicitado: Tema -> Párrafo -> Hora -> Autor
-          const shareText = `🔴 *NOTICIA: ${data.category}*\n\n"${data.title}"\n\n${data.firstParagraph}\n\n🕒 *HORA:* ${data.time}\n✍️ *SUBIDO POR:* ${data.author}\n\n🔗 REF-ID: ${newsCode}\n_Enviado vía CDLT NEWS_`;
+          // Formato solicitado: Tema -> Párrafo -> Hora -> Autor + LINK
+          const shareText = `🔴 *NOTICIA: ${data.category}*\n\n"${data.title}"\n\n${data.firstParagraph}\n\n🕒 *HORA:* ${data.time}\n✍️ *SUBIDO POR:* ${data.author}\n\n🔗 *VER MÁS:* https://cdlt-news.vercel.app/\n🆔 *REF-ID:* ${newsCode}\n\n_Enviado vía CDLT NEWS_`;
           resolve({ blob, text: shareText, code: newsCode });
         } else {
           reject('Error al procesar imagen');
@@ -103,7 +103,7 @@ export const shareToPlatform = async (platform: 'whatsapp' | 'facebook' | 'gmail
   if (platform === 'whatsapp') {
     window.open(`https://wa.me/?text=${encodedText}`, '_blank');
   } else if (platform === 'facebook') {
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodedText}`, '_blank');
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://cdlt-news.vercel.app/')}&quote=${encodedText}`, '_blank');
   } else if (platform === 'gmail') {
     window.open(`mailto:?subject=REPORTE CDLT NEWS&body=${encodedText}`, '_blank');
   }
