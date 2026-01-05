@@ -19,7 +19,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({ report, onClose }) => {
       const firstParagraph = (report.content || report.summary).split('\n')[0];
       const content = await prepareShareContent({
         title: report.title,
-        category: 'REPORTE CENTRAL',
+        category: report.category || 'REPORTE CENTRAL',
         firstParagraph: firstParagraph.substring(0, 200) + '...',
         time: report.date,
         author: report.author,
@@ -69,6 +69,9 @@ const ReportViewer: React.FC<ReportViewerProps> = ({ report, onClose }) => {
             src={report.imageUrl} 
             alt={report.title} 
             className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1504711432869-efd5971ee142?auto=format&fit=crop&q=80&w=800';
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] to-transparent" />
         </div>
@@ -77,7 +80,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({ report, onClose }) => {
           <div className="flex items-center gap-3 text-[10px] font-bold text-blue-500 tracking-widest mb-4">
             <span className="uppercase">{report.author}</span>
             <span className="w-1 h-1 bg-zinc-800 rounded-full"></span>
-            <span className="text-zinc-500">{report.date}</span>
+            <span className="text-zinc-500 uppercase">{report.date}</span>
           </div>
 
           <h1 className="text-3xl font-bold serif-font leading-tight text-white mb-6">
@@ -95,10 +98,30 @@ const ReportViewer: React.FC<ReportViewerProps> = ({ report, onClose }) => {
               <p key={i}>{para}</p>
             ))}
 
+            {report.sources && report.sources.length > 0 && (
+              <div className="pt-8 mt-8 border-t border-zinc-900">
+                <p className="text-[10px] text-blue-500 font-black uppercase tracking-[0.2em] mb-4">Verificación y Fuentes Externas</p>
+                <div className="space-y-3">
+                  {report.sources.map((source, idx) => (
+                    <a 
+                      key={idx} 
+                      href={source.uri} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="block p-3 bg-zinc-900/50 border border-zinc-800 rounded-lg hover:border-blue-600 transition-colors group"
+                    >
+                      <p className="text-[11px] text-zinc-100 font-bold mb-1 group-hover:text-blue-400">{source.title}</p>
+                      <p className="text-[9px] text-zinc-500 truncate">{source.uri}</p>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="pt-10 border-t border-zinc-900 mt-10">
-              <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mb-2">FUENTES CONFIRMADAS</p>
+              <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mb-2">Protocolo CDLT</p>
               <p className="text-[9px] text-zinc-500 italic leading-relaxed">
-                Este reporte ha sido verificado por nuestra unidad de inteligencia en Nueva York y Caracas. CDLT NEWS mantiene el compromiso de objetividad ante los eventos actuales en Venezuela.
+                Este reporte ha sido procesado por nuestra unidad de IA mediante búsqueda en tiempo real. CDLT NEWS mantiene el compromiso de objetividad y rapidez ante los eventos globales.
               </p>
             </div>
           </div>

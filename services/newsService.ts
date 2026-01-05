@@ -1,77 +1,135 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { NewsStory } from "../types";
+import { NewsStory, MainNews } from "../types";
 
-const CACHE_KEY = 'cdlt_news_cache_v6';
-const CACHE_TIME = 21600000; // 6 horas
+const CACHE_KEY = 'cdlt_news_cache_v10';
+const MAIN_FEED_CACHE_KEY = 'cdlt_main_feed_cache_v5';
+const CACHE_TIME = 21600000; // 6 horas para historias
+const MAIN_FEED_CACHE_TIME = 1800000; // 30 minutos para noticias centrales
 
 const CATEGORIES = [
   'POLÍTICA', 'GUERRA', 'ECONOMÍA', 'DESCUBRIMIENTOS', 
   'BELLEZA', 'SALUD', 'GASTRONOMÍA', 'EVENTOS', 'NATURALEZA'
 ];
 
-const STORY_GIFS = [
-  'https://i.pinimg.com/originals/ec/ca/c7/eccac7b5937c015dac4763613efbe663.gif',
-  'https://i.pinimg.com/originals/bd/02/b3/bd02b359c12585fa1259e953412cefd3.gif',
-  'https://64.media.tumblr.com/bb60e5e371c159353b46d61c196f86f3/tumblr_o7e5hglQYv1uaqtxco1_540.gif',
-  'https://cdn.pixabay.com/animation/2023/08/14/11/14/11-14-25-2_512.gif',
-  'https://i.pinimg.com/originals/fa/74/70/fa7470ce3e4e049c0f3e9829c31478d5.gif',
-  'https://cdn.pixabay.com/animation/2023/08/14/11/14/11-14-35-378_512.gif',
-  'https://i.pinimg.com/originals/13/d0/39/13d0395219e0f866075a7fd911ca82ba.gif',
-  'https://i.pinimg.com/originals/3e/35/44/3e3544cd1ff81c2be5097d9d81dbc437.gif',
-  'https://i.pinimg.com/originals/c3/6f/37/c36f37ffac085a669966b6328abe1995.gif'
-];
+// Helper para generar una imagen de respaldo profesional basada en el tema
+export const getFallbackImage = (query: string) => {
+  return `https://images.unsplash.com/photo-1504711432869-efd5971ee142?q=80&w=1080&auto=format&fit=crop`; // Default news
+};
 
-const getRandomGif = (index: number) => STORY_GIFS[index % STORY_GIFS.length];
-
-const generatePlaceholderStories = (): NewsStory[] => {
-  const stories: NewsStory[] = [];
-  const today = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+export const fetchMainNews = async (forceRefresh = false): Promise<MainNews[]> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
   
-  for (let i = 0; i < 35; i++) {
-    const category = CATEGORIES[i % CATEGORIES.length];
-    stories.push({
-      id: `fallback-${i}-${Date.now()}`,
-      category: category,
-      title: `Reporte CDLT: ${category} en tiempo real`,
-      concept: `Información confirmada recibida hoy ${today}. Nuestros corresponsales verifican datos de última hora para este reporte exclusivo de ${category.toLowerCase()}.`,
-      timestamp: `HACE ${i + 5} MIN`,
-      image: getRandomGif(i)
-    });
+  const cached = localStorage.getItem(MAIN_FEED_CACHE_KEY);
+  if (cached && !forceRefresh) {
+    try {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < MAIN_FEED_CACHE_TIME) return data;
+    } catch (e) { console.error(e); }
   }
-  return stories;
+
+  try {
+    if (!process.env.API_KEY) return [];
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Eres el editor jefe de CDLT NEWS. Busca las 6 noticias más impactantes de HOY. 
+      REQUERIMIENTO: Al menos 3 sobre VENEZUELA y 3 Globales.
+      Para cada una, busca una URL de imagen REAL en la web que sea impactante.
+      Devuelve un JSON profesional: [{ "id": string, "title": string, "summary": string, "content": string, "imageUrl": string, "date": string, "author": string, "category": string, "imageQuery": string }]
+      'imageQuery' debe ser un término de búsqueda en inglés para Unsplash (ej: "venezuela protest", "caracas city", "economy stocks") como respaldo.`,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              title: { type: Type.STRING },
+              summary: { type: Type.STRING },
+              content: { type: Type.STRING },
+              imageUrl: { type: Type.STRING },
+              date: { type: Type.STRING },
+              author: { type: Type.STRING },
+              category: { type: Type.STRING },
+              imageQuery: { type: Type.STRING }
+            },
+            required: ["id", "title", "summary", "content", "imageUrl", "date", "author", "category", "imageQuery"]
+          }
+        }
+      }
+    });
+
+    const news = JSON.parse(response.text || "[]") as (MainNews & { imageQuery: string })[];
+    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    const sources = chunks.filter((c: any) => c.web).map((c: any) => ({ uri: c.web.uri, title: c.web.title }));
+
+    const processedNews = news.map(item => {
+      // Si la URL de imagen parece rota o es un placeholder, usamos el query para Unsplash
+      const finalImageUrl = item.imageUrl && item.imageUrl.startsWith('http') 
+        ? item.imageUrl 
+        : `https://source.unsplash.com/featured/?${encodeURIComponent(item.imageQuery)}`;
+
+      return {
+        ...item,
+        imageUrl: finalImageUrl,
+        sources: sources.length > 0 ? sources.slice(0, 3) : undefined
+      };
+    });
+
+    if (processedNews.length > 0) {
+      localStorage.setItem(MAIN_FEED_CACHE_KEY, JSON.stringify({
+        data: processedNews,
+        timestamp: Date.now()
+      }));
+    }
+
+    return processedNews;
+  } catch (error) {
+    console.error("Error fetching main news:", error);
+    return [];
+  }
 };
 
 export const getCachedStories = (): NewsStory[] => {
   const cached = localStorage.getItem(CACHE_KEY);
   if (!cached) return [];
   try {
-    const { data, timestamp } = JSON.parse(cached);
-    if (data.length < 30) return [];
-    if (Date.now() - timestamp > CACHE_TIME) return [];
-    return data;
+    const { data } = JSON.parse(cached);
+    return data || [];
   } catch (e) {
     return [];
   }
 };
 
-export const fetchLatestStories = async (): Promise<NewsStory[]> => {
+export const fetchLatestStories = async (forceRefresh = false): Promise<NewsStory[]> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-  const todayDate = new Date().toISOString().split('T')[0];
   
-  try {
-    if (!process.env.API_KEY) {
-      return generatePlaceholderStories();
+  if (!forceRefresh) {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_TIME) return data;
     }
+  }
+
+  try {
+    if (!process.env.API_KEY) return generatePlaceholderStories();
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents: `ACTÚA COMO UN CORRESPONSAL DE NOTICIAS DE ÉLITE. Genera un array JSON de EXACTAMENTE 35 noticias REALES, CONFIRMADAS y ACTUALES ocurridas específicamente HOY (${todayDate}). 
-      PROHIBIDO usar noticias viejas.
-      Categorías: POLÍTICA, GUERRA, ECONOMÍA, DESCUBRIMIENTOS, BELLEZA, SALUD, GASTRONOMÍA, EVENTOS, NATURALEZA. 
-      Formato: {id, category, title, concept, timestamp}.
-      Devuelve SOLO el JSON puro.`,
+      model: "gemini-3-flash-preview",
+      contents: `Genera un JSON de 35 micro-noticias reales de hoy en ESPAÑOL.
+      REGLAS:
+      1. PROHIBIDO VENEZUELA (ni la palabra ni el país).
+      2. Cada una con un TEMA ESPECÍFICO (ej: 'Nuevos chips IA', 'Exploración Oceánica', 'Moda Sustentable').
+      3. Para cada noticia, genera un 'image' que sea un link directo de Unsplash usando su API de búsqueda: https://source.unsplash.com/featured/?{tema_en_ingles}
+      4. Asegúrate que 'imageQuery' sea el término en inglés usado.
+      
+      JSON: [{id, category, title, concept, timestamp, image, imageQuery}].`,
       config: {
+        tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.ARRAY,
@@ -82,9 +140,11 @@ export const fetchLatestStories = async (): Promise<NewsStory[]> => {
               category: { type: Type.STRING },
               title: { type: Type.STRING },
               concept: { type: Type.STRING },
-              timestamp: { type: Type.STRING }
+              timestamp: { type: Type.STRING },
+              image: { type: Type.STRING },
+              imageQuery: { type: Type.STRING }
             },
-            required: ["id", "category", "title", "concept", "timestamp"]
+            required: ["id", "category", "title", "concept", "timestamp", "image", "imageQuery"]
           }
         }
       }
@@ -93,23 +153,41 @@ export const fetchLatestStories = async (): Promise<NewsStory[]> => {
     const news = JSON.parse(response.text || "[]");
     
     if (Array.isArray(news) && news.length > 0) {
-      const processedNews = news.map((item: any, idx: number) => ({
+      const processed = news.map(item => ({
         ...item,
-        id: item.id || `story-${Date.now()}-${idx}`,
-        image: getRandomGif(idx)
+        // Reforzamos que la imagen sea funcional
+        image: item.image.includes('unsplash') 
+          ? item.image 
+          : `https://source.unsplash.com/featured/?${encodeURIComponent(item.imageQuery || item.category)}`
       }));
 
       localStorage.setItem(CACHE_KEY, JSON.stringify({
-        data: processedNews,
+        data: processed,
         timestamp: Date.now()
       }));
-      return processedNews;
+      return processed;
     }
     
     return generatePlaceholderStories();
   } catch (error) {
-    console.error("Error news service:", error);
-    const cached = getCachedStories();
-    return cached.length >= 30 ? cached : generatePlaceholderStories();
+    console.error("Error stories fetch:", error);
+    return generatePlaceholderStories();
   }
+};
+
+const generatePlaceholderStories = (): NewsStory[] => {
+  const stories: NewsStory[] = [];
+  for (let i = 0; i < 35; i++) {
+    const category = CATEGORIES[i % CATEGORIES.length];
+    const query = category.toLowerCase();
+    stories.push({
+      id: `fallback-st-${i}`,
+      category: category,
+      title: `Tendencia: ${category}`,
+      concept: `Información global verificada sobre ${category}. Nuestros sistemas están analizando los datos más recientes.`,
+      timestamp: `HACE ${i + 5} MIN`,
+      image: `https://source.unsplash.com/featured/?${query},news`
+    });
+  }
+  return stories;
 };

@@ -17,6 +17,8 @@ export interface MainNews {
   imageUrl: string;
   date: string;
   author: string;
+  category?: string;
+  sources?: { uri: string; title: string }[];
 }
 
 export type Category = 

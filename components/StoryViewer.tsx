@@ -15,13 +15,17 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
   const [progress, setProgress] = useState(0);
   const [showShare, setShowShare] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [imageErrorCount, setImageErrorCount] = useState(0);
   const STORY_DURATION = 15000;
   const progressInterval = useRef<number | null>(null);
+
+  const story = stories[currentIndex];
 
   const nextStory = () => {
     if (currentIndex < stories.length - 1) {
       setCurrentIndex(prev => prev + 1);
       setProgress(0);
+      setImageErrorCount(0);
     } else {
       onClose();
     }
@@ -31,6 +35,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
       setProgress(0);
+      setImageErrorCount(0);
     }
   };
 
@@ -83,8 +88,22 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
     }
   };
 
-  const story = stories[currentIndex];
   if (!story) return null;
+
+  // Fallback visual si la imagen no carga
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = e.target as HTMLImageElement;
+    if (imageErrorCount === 0) {
+      // Intento 1: Unsplash basado en tema
+      const query = (story as any).imageQuery || story.category;
+      target.src = `https://source.unsplash.com/featured/?${encodeURIComponent(query)},news`;
+      setImageErrorCount(1);
+    } else if (imageErrorCount === 1) {
+      // Intento 2: Imagen genérica de alta calidad
+      target.src = 'https://images.unsplash.com/photo-1504711432869-efd5971ee142?q=80&w=1080';
+      setImageErrorCount(2);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col h-screen overflow-hidden">
@@ -105,7 +124,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
       {/* Header Info */}
       <div className="absolute top-8 left-4 right-4 z-20 flex justify-between items-start">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-[12px] border border-white/30 text-white shrink-0 shadow-lg">
+          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-[12px] border border-white/30 text-white shrink-0 shadow-xl">
             C
           </div>
           <div className="flex flex-col">
@@ -142,29 +161,28 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
         </div>
       </div>
 
-      {/* Animated Background GIF Container */}
+      {/* Media Container */}
       <div className="absolute inset-0 w-full h-full bg-[#0a0a0c] overflow-hidden">
-        {/* GIF Background - Key helps trigger refresh/transition if needed, though GIFs loop natively */}
         <img 
           key={story.id}
           src={story.image} 
-          alt="News Background" 
-          className="w-full h-full object-cover animate-in fade-in duration-500 scale-100"
+          alt={story.title} 
+          className="w-full h-full object-cover animate-in fade-in duration-700"
+          onError={handleImageError}
         />
         
-        {/* Superior and Inferior Overlays for Contrast */}
+        {/* Overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-transparent to-black/60 pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#0a0a0c]/90 pointer-events-none" />
       </div>
 
-      {/* News Text Area with reinforced dark background */}
+      {/* Content Area */}
       <div className="absolute bottom-10 left-0 right-0 z-10 animate-fade-in-up flex flex-col pointer-events-none px-6">
         <h2 className="text-[26px] font-black text-white leading-[1.1] mb-5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] serif-font italic tracking-tight">
           {story.title}
         </h2>
         
         <div className="max-h-[38vh] overflow-y-auto no-scrollbar">
-          {/* Reinforced dark area for text readability */}
           <div className="bg-black/75 backdrop-blur-[12px] p-5 rounded-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
             <p className="text-[16px] text-zinc-100 font-bold leading-relaxed tracking-tight">
               {story.concept}
@@ -174,9 +192,9 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
         
         <div className="mt-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_12px_rgba(34,197,94,0.9)]"></div>
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_12px_rgba(59,130,246,0.9)]"></div>
             <span className="text-[10px] font-black text-white/90 uppercase tracking-[0.15em] drop-shadow-md">
-              REPORTE CONFIRMADO HOY
+              REPORTE GLOBAL CONFIRMADO
             </span>
           </div>
           <div className="text-[9px] font-bold text-white/40 uppercase tracking-widest">
@@ -185,11 +203,11 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
         </div>
       </div>
 
-      {/* Navigation Touch Zones */}
+      {/* Navigation zones */}
       {!showShare && (
         <div className="absolute inset-0 z-10 flex">
-          <div className="w-1/2 h-full cursor-pointer" onClick={prevStory} title="Anterior" />
-          <div className="w-1/2 h-full cursor-pointer" onClick={nextStory} title="Siguiente" />
+          <div className="w-1/2 h-full cursor-pointer" onClick={prevStory} />
+          <div className="w-1/2 h-full cursor-pointer" onClick={nextStory} />
         </div>
       )}
 
