@@ -1,0 +1,7 @@
+{
+  "name": "CDLT NEWS",
+  "description": "A high-end, professional news platform with real-time global updates, featuring an Instagram-style story system and a sleek dark-grey and blue aesthetic optimized for mobile.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
