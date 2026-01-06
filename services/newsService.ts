@@ -4,9 +4,9 @@ import { NewsStory, MainNews } from "../types";
 
 const HISTORY_KEY = 'cdlt_news_history_v4';
 const STORIES_HISTORY_KEY = 'cdlt_stories_history_v4';
-const REFRESH_INTERVAL = 300000; // 5 min
+const REFRESH_INTERVAL = 180000; // 3 minutos para mayor frescura
 
-const mergeAndUnique = <T extends { title: string }>(oldData: T[], newData: T[], limit = 150): T[] => {
+const mergeAndUnique = <T extends { title: string }>(oldData: T[], newData: T[], limit = 50): T[] => {
   const seenTitles = new Set();
   const combined = [...newData, ...oldData];
   return combined.filter(item => {
@@ -32,6 +32,7 @@ export const fetchMainNews = async (forceRefresh = false): Promise<MainNews[]> =
     } catch(e) {}
   }
 
+  // Si no forzamos y los datos son recientes, devolvemos cache inmediatamente
   if (!forceRefresh && (Date.now() - lastUpdate < REFRESH_INTERVAL) && history.length > 0) {
     return history;
   }
@@ -39,24 +40,22 @@ export const fetchMainNews = async (forceRefresh = false): Promise<MainNews[]> =
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `ACTUALIDAD URGENTE: Reporta las 15 noticias y novedades más importantes de este instante. Prioriza impacto global. Devuelve JSON estrictamente: [{ "id": string, "title": string, "summary": string, "content": string, "imageUrl": string, "date": string, "author": string, "category": string }]`,
+      contents: `REPORTE URGENTE: Genera las 15 noticias y novedades más impactantes y reales de los últimos minutos. Enfócate en primicias. JSON: [{ "id": string, "title": string, "summary": string, "content": string, "imageUrl": string, "date": string, "author": string, "category": string }]`,
       config: { 
         tools: [{ googleSearch: {} }], 
         responseMimeType: "application/json" 
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("Respuesta vacía");
-    
-    const newNews = JSON.parse(text) as MainNews[];
-    if (newNews && newNews.length > 0) {
-      history = mergeAndUnique(history, newNews, 150);
-      localStorage.setItem(HISTORY_KEY, JSON.stringify({ data: history, timestamp: Date.now() }));
+    const newNews = JSON.parse(response.text || "[]") as MainNews[];
+    if (newNews.length > 0) {
+      const merged = mergeAndUnique(history, newNews, 100);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify({ data: merged, timestamp: Date.now() }));
+      return merged;
     }
     return history;
   } catch (error) {
-    console.error("API Error - Usando cache");
+    console.error("Error API:", error);
     return history;
   }
 };
@@ -82,20 +81,18 @@ export const fetchLatestStories = async (forceRefresh = false): Promise<NewsStor
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Historias del momento (Stories): Genera 12 micro-noticias visuales sobre tendencias mundiales de hoy. JSON: [{id, category, title, concept, timestamp, image}]`,
+      contents: `Visual Stories: Genera 12 micro-noticias visuales sobre tendencias mundiales de este segundo. JSON: [{id, category, title, concept, timestamp, image}]`,
       config: { 
         tools: [{ googleSearch: {} }], 
         responseMimeType: "application/json" 
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("Respuesta vacía");
-
-    const newStories = JSON.parse(text) as NewsStory[];
-    if (newStories && newStories.length > 0) {
-      history = mergeAndUnique(history, newStories, 60);
-      localStorage.setItem(STORIES_HISTORY_KEY, JSON.stringify({ data: history, timestamp: Date.now() }));
+    const newStories = JSON.parse(response.text || "[]") as NewsStory[];
+    if (newStories.length > 0) {
+      const merged = mergeAndUnique(history, newStories, 40);
+      localStorage.setItem(STORIES_HISTORY_KEY, JSON.stringify({ data: merged, timestamp: Date.now() }));
+      return merged;
     }
     return history;
   } catch (error) {
