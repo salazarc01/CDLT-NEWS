@@ -22,41 +22,56 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
+      // Intentar cargar desde cache inmediatamente para no mostrar pantalla vacía
       const initialStories = getCachedStories();
-      if (initialStories.length > 0) setStories(initialStories);
-      
       const cachedMainStr = localStorage.getItem('cdlt_news_history_v4');
+      
+      let hasCachedData = false;
+      if (initialStories.length > 0) {
+        setStories(initialStories);
+        hasCachedData = true;
+      }
+      
       if (cachedMainStr) {
         try {
           const parsed = JSON.parse(cachedMainStr);
-          setMainFeed(parsed.data);
-          setIsLoading(false);
+          if (parsed.data && parsed.data.length > 0) {
+            setMainFeed(parsed.data);
+            hasCachedData = true;
+          }
         } catch(e) {
-          setIsLoading(true);
+          console.error("Cache corrupto");
         }
-      } else {
-        setIsLoading(true);
+      }
+
+      // Si tenemos algo, dejamos de mostrar el cargador para que el usuario vea contenido
+      if (hasCachedData) {
+        setIsLoading(false);
       }
       
+      // Sincronizar con la API en segundo plano o como carga inicial
       await syncContent();
       setIsLoading(false);
     };
+    
     init();
-    const interval = setInterval(syncContent, 300000);
+    const interval = setInterval(syncContent, 300000); // 5 min
     return () => clearInterval(interval);
   }, []);
 
   const syncContent = async () => {
+    if (isUpdating) return;
     setIsUpdating(true);
     try {
       const [latestStories, latestFeed] = await Promise.all([
         fetchLatestStories(true),
         fetchMainNews(true)
       ]);
-      if (latestStories.length > 0) setStories(latestStories);
-      if (latestFeed.length > 0) setMainFeed(latestFeed);
+      
+      if (latestStories && latestStories.length > 0) setStories(latestStories);
+      if (latestFeed && latestFeed.length > 0) setMainFeed(latestFeed);
     } catch (e) {
-      console.error("Error de sincronización.");
+      console.error("Error de sincronización en vivo.");
     } finally {
       setIsUpdating(false);
     }
@@ -64,11 +79,11 @@ const App: React.FC = () => {
 
   const filteredMainFeed = activeCategory === 'TODO' 
     ? mainFeed 
-    : mainFeed.filter(news => news.category?.toUpperCase()?.includes(activeCategory));
+    : mainFeed.filter(news => news.category?.toUpperCase()?.includes(activeCategory.toUpperCase()));
 
   const filteredStories = activeCategory === 'TODO'
     ? stories
-    : stories.filter(story => story.category?.toUpperCase()?.includes(activeCategory));
+    : stories.filter(story => story.category?.toUpperCase()?.includes(activeCategory.toUpperCase()));
 
   const handleShareMain = async (platform: 'whatsapp' | 'facebook' | 'gmail') => {
     if (!sharingNews) return;
@@ -84,6 +99,7 @@ const App: React.FC = () => {
       });
       if (content) await shareToPlatform(platform, { blob: content.blob, text: content.text });
     } catch (e) {
+      console.error("Error al compartir.");
     } finally {
       setIsGeneratingShare(false);
       setSharingNews(null);
@@ -94,8 +110,10 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-[#09090b] text-zinc-100 max-w-md mx-auto relative border-x border-zinc-800 shadow-[0_0_100px_rgba(0,0,0,0.5)] pb-10">
       <Header activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
 
-      {/* Breaking News Ticker */}
-      {!isLoading && <BreakingTicker items={mainFeed.slice(0, 5).map(n => n.title)} />}
+      {/* Breaking News Ticker - Siempre visible si hay datos */}
+      {(mainFeed.length > 0) && (
+        <BreakingTicker items={mainFeed.slice(0, 8).map(n => n.title)} />
+      )}
 
       {/* Sección de Historias */}
       <section className="py-6 bg-[#0d0d0f] border-b border-zinc-900 overflow-hidden relative z-10">
@@ -104,11 +122,11 @@ const App: React.FC = () => {
              <span className="w-2 h-[1px] bg-blue-600"></span>
              Historias del Día
            </h2>
-           {isUpdating && <div className="w-1 h-1 bg-blue-500 rounded-full animate-ping"></div>}
+           {isUpdating && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>}
         </div>
         
         <div className="flex gap-5 overflow-x-auto no-scrollbar px-6 pb-2 min-h-[100px]">
-          {isLoading ? (
+          {isLoading && stories.length === 0 ? (
             Array(5).fill(0).map((_, i) => (
               <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2">
                 <div className="w-16 h-16 rounded-full bg-zinc-800 animate-pulse"></div>
@@ -144,7 +162,7 @@ const App: React.FC = () => {
       {/* Feed Principal de Noticias */}
       <main className="px-6 py-12 relative z-10">
         <div className="space-y-16">
-          {isLoading ? (
+          {isLoading && mainFeed.length === 0 ? (
             Array(3).fill(0).map((_, i) => (
               <div key={i} className="space-y-4 animate-pulse">
                 <div className="aspect-[16/10] bg-zinc-900 rounded-2xl"></div>
@@ -163,21 +181,21 @@ const App: React.FC = () => {
                     onError={(e) => (e.target as HTMLImageElement).src = `https://images.unsplash.com/photo-1504711432869-efd5971ee142?q=80&w=800`}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent"></div>
-                  <div className="absolute top-5 left-5 flex gap-2">
-                    <div className={`text-white text-[9px] font-black px-3.5 py-1.5 rounded-sm uppercase tracking-[0.2em] shadow-xl ${news.category?.toUpperCase()?.includes('VENEZUELA') ? 'bg-blue-700' : 'bg-black/60 backdrop-blur-md border border-white/10'}`}>
+                  <div className="absolute top-4 left-4 flex gap-2">
+                    <div className={`text-white text-[8px] font-black px-3 py-1 rounded-sm uppercase tracking-[0.2em] shadow-xl ${news.category?.toUpperCase()?.includes('VENEZUELA') ? 'bg-blue-700' : 'bg-black/60 backdrop-blur-md border border-white/10'}`}>
                       {news.category?.toUpperCase() || 'GLOBAL'}
                     </div>
                     {idx < 3 && (
-                      <div className="bg-red-600 text-white text-[9px] font-black px-3.5 py-1.5 rounded-sm uppercase tracking-[0.2em] animate-pulse">
-                        NOVEDAD
+                      <div className="bg-red-600 text-white text-[8px] font-black px-3 py-1 rounded-sm uppercase tracking-[0.2em] animate-pulse">
+                        ÚLTIMA HORA
                       </div>
                     )}
                   </div>
-                  <div className="absolute bottom-5 left-5 right-5 flex justify-between items-center">
-                    <span className="text-[10px] font-black text-white/50 tracking-widest uppercase bg-black/40 backdrop-blur-sm px-2.5 py-1 rounded">
+                  <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center">
+                    <span className="text-[9px] font-black text-white/50 tracking-widest uppercase bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded">
                       {news.date}
                     </span>
-                    <button onClick={(e) => { e.stopPropagation(); setSharingNews(news); }} className="w-11 h-11 flex items-center justify-center bg-white/10 backdrop-blur-2xl rounded-full border border-white/10 hover:bg-blue-600 transition-all active:scale-90">
+                    <button onClick={(e) => { e.stopPropagation(); setSharingNews(news); }} className="w-10 h-10 flex items-center justify-center bg-white/10 backdrop-blur-2xl rounded-full border border-white/10 hover:bg-blue-600 transition-all active:scale-90">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                       </svg>
@@ -186,15 +204,15 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="space-y-4 px-1">
-                  <h3 className="text-2xl font-black leading-[1.25] serif-font text-white group-hover:text-blue-500 transition-colors duration-300">
+                  <h3 className="text-xl font-black leading-[1.2] serif-font text-white group-hover:text-blue-500 transition-colors duration-300">
                     {news.title}
                   </h3>
                   <p className="text-zinc-400 text-sm leading-relaxed font-medium line-clamp-3">
                     {news.summary}
                   </p>
-                  <button onClick={() => setActiveReport(news)} className="inline-flex items-center gap-4 text-white font-black text-[10px] uppercase tracking-[0.35em] group/btn pt-3">
-                    Analizar Informe
-                    <div className="w-8 h-[1.5px] bg-blue-600 group-hover/btn:w-16 transition-all duration-700"></div>
+                  <button onClick={() => setActiveReport(news)} className="inline-flex items-center gap-4 text-white font-black text-[9px] uppercase tracking-[0.35em] group/btn pt-2">
+                    VER REPORTE
+                    <div className="w-6 h-[1.5px] bg-blue-600 group-hover/btn:w-12 transition-all duration-700"></div>
                   </button>
                 </div>
               </article>
