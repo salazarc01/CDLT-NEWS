@@ -4,7 +4,7 @@ import { NewsStory, MainNews } from "../types";
 
 const HISTORY_KEY = 'cdlt_news_history_v4';
 const STORIES_HISTORY_KEY = 'cdlt_stories_history_v4';
-const REFRESH_INTERVAL = 900000;
+const REFRESH_INTERVAL = 300000; // 5 minutos exactos
 
 const mergeAndUnique = <T extends { title: string }>(oldData: T[], newData: T[], limit = 150): T[] => {
   const seenTitles = new Set();
@@ -30,7 +30,7 @@ export const fetchMainNews = async (forceRefresh = false): Promise<MainNews[]> =
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Reporta las 15 noticias más importantes y REALES de este instante. Categorías: VENEZUELA, GLOBAL, ECONOMÍA, CULTURA. Usa búsqueda para imágenes reales. JSON: [{ "id": string, "title": string, "summary": string, "content": string, "imageUrl": string, "date": string, "author": string, "category": string }]`,
+      contents: `Reporta las 15 noticias y NOVEDADES más urgentes y reales de este preciso instante. Enfócate en impacto global y temas tendencia. JSON: [{ "id": string, "title": string, "summary": string, "content": string, "imageUrl": string, "date": string, "author": string, "category": string }]`,
       config: { tools: [{ googleSearch: {} }], responseMimeType: "application/json" }
     });
     const newNews = JSON.parse(response.text || "[]") as MainNews[];
@@ -42,34 +42,13 @@ export const fetchMainNews = async (forceRefresh = false): Promise<MainNews[]> =
   } catch (error) { return history; }
 };
 
-export const getSuggestions = async (query: string): Promise<string[]> => {
-  if (!query || query.length < 2) return [];
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  try {
-    // Usamos gemini-3-flash-preview para máxima velocidad de respuesta "letra a letra"
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Eres un radar de noticias de CDLT. El usuario está escribiendo: "${query}". 
-      Proporciona exactamente 5 temas o titulares de noticias REALES Y ACTUALES que comiencen o tengan relación DIRECTA y COHERENTE con "${query}". 
-      No inventes temas que no tengan que ver con la palabra. Si busca "Manzana", sugiere noticias sobre Apple o la fruta en la actualidad.
-      Devuelve solo un array JSON de strings.`,
-      config: { 
-        responseMimeType: "application/json",
-        thinkingConfig: { thinkingBudget: 0 } // Deshabilitar pensamiento para velocidad instantánea
-      }
-    });
-    return JSON.parse(response.text || "[]");
-  } catch (error) { return []; }
-};
-
 export const searchNews = async (query: string): Promise<MainNews | null> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `ACTUALIDAD URGENTE: Genera un reporte periodístico completo sobre: "${query}". 
-      Debe basarse en hechos reales de las últimas horas. 
-      Busca una imagen REAL de alta calidad. 
+      contents: `URGENTE: Genera un reporte periodístico verificado sobre: "${query}". 
+      Debe ser información real de las últimas horas. Busca imagen real.
       JSON: { "id": string, "title": string, "summary": string, "content": string, "imageUrl": string, "date": string, "author": string, "category": string }`,
       config: { 
         tools: [{ googleSearch: {} }], 
@@ -77,7 +56,9 @@ export const searchNews = async (query: string): Promise<MainNews | null> => {
       }
     });
     return JSON.parse(response.text || "null");
-  } catch (error) { return null; }
+  } catch (error) { 
+    return null; 
+  }
 };
 
 export const fetchLatestStories = async (forceRefresh = false): Promise<NewsStory[]> => {
@@ -93,7 +74,7 @@ export const fetchLatestStories = async (forceRefresh = false): Promise<NewsStor
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Genera 12 micro-noticias actuales con imágenes reales de hoy. JSON: [{id, category, title, concept, timestamp, image}].`,
+      contents: `Genera 12 micro-noticias impactantes de historias actuales (stories) con imágenes reales de hoy. JSON: [{id, category, title, concept, timestamp, image}].`,
       config: { tools: [{ googleSearch: {} }], responseMimeType: "application/json" }
     });
     const newStories = JSON.parse(response.text || "[]") as NewsStory[];
@@ -108,4 +89,20 @@ export const fetchLatestStories = async (forceRefresh = false): Promise<NewsStor
 export const getCachedStories = (): NewsStory[] => {
   const cached = localStorage.getItem(STORIES_HISTORY_KEY);
   return cached ? JSON.parse(cached).data : [];
+};
+
+export const getSuggestions = async (query: string): Promise<string[]> => {
+  if (!query || query.trim().length < 2) return [];
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Proporciona 5 sugerencias de búsqueda sobre: "${query}". JSON array de strings.`,
+      config: { 
+        responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: 0 }
+      }
+    });
+    return JSON.parse(response.text || "[]");
+  } catch (error) { return []; }
 };

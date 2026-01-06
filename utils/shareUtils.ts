@@ -26,7 +26,6 @@ export const prepareShareContent = async (data: ShareData) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas not supported');
 
-    // Dimensiones de "Story" (1080x1920) para máxima calidad en móviles
     canvas.width = 1080;
     canvas.height = 1920;
 
@@ -35,11 +34,9 @@ export const prepareShareContent = async (data: ShareData) => {
     
     const blob = await new Promise<Blob | null>((resolve) => {
       img.onload = () => {
-        // 1. Fondo base oscuro
         ctx.fillStyle = '#0a0a0c';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 2. Dibujar imagen de noticia (ajuste cover)
         try {
           const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
           const x = (canvas.width - img.width * scale) / 2;
@@ -49,7 +46,6 @@ export const prepareShareContent = async (data: ShareData) => {
           console.warn("CORS/Draw error, basic background used");
         }
 
-        // 3. Degradados de legibilidad (Superior e Inferior)
         const topGrad = ctx.createLinearGradient(0, 0, 0, 400);
         topGrad.addColorStop(0, 'rgba(0,0,0,0.8)');
         topGrad.addColorStop(1, 'rgba(0,0,0,0)');
@@ -63,7 +59,6 @@ export const prepareShareContent = async (data: ShareData) => {
         ctx.fillStyle = bottomGrad;
         ctx.fillRect(0, canvas.height - 1000, canvas.width, 1000);
 
-        // 4. Marca de Agua / Header
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 50px sans-serif';
         ctx.textAlign = 'left';
@@ -73,23 +68,26 @@ export const prepareShareContent = async (data: ShareData) => {
         ctx.font = 'bold 50px sans-serif';
         ctx.fillText('NEWS', 205, 120);
 
-        // 5. Etiqueta de Categoría
-        const catWidth = ctx.measureText(data.category.toUpperCase()).width + 40;
+        const categoryText = (data.category || 'INFO').toUpperCase();
+        const catWidth = ctx.measureText(categoryText).width + 40;
         ctx.fillStyle = '#2563eb';
-        ctx.roundRect ? ctx.roundRect(60, 160, catWidth, 60, 8) : ctx.fillRect(60, 160, catWidth, 60);
+        if (ctx.roundRect) {
+            ctx.roundRect(60, 160, catWidth, 60, 8);
+        } else {
+            ctx.fillRect(60, 160, catWidth, 60);
+        }
         ctx.fill();
         
         ctx.fillStyle = '#ffffff';
         ctx.font = 'black 30px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(data.category.toUpperCase(), 60 + catWidth/2, 202);
+        ctx.fillText(categoryText, 60 + catWidth/2, 202);
 
-        // 6. Título de la Noticia (Auto-wrap)
         ctx.textAlign = 'left';
         ctx.fillStyle = '#ffffff';
         ctx.font = 'italic bold 85px serif';
         
-        const words = data.title.split(' ');
+        const words = (data.title || '').split(' ');
         let line = '';
         let yPos = canvas.height - 650;
         const lineHeight = 100;
@@ -107,16 +105,14 @@ export const prepareShareContent = async (data: ShareData) => {
         }
         ctx.fillText(line, 60, yPos);
 
-        // 7. Footer / Metadatos
         ctx.fillStyle = 'rgba(255,255,255,0.6)';
         ctx.font = 'bold 30px sans-serif';
-        ctx.fillText(`${data.time} • VERIFICADO POR CDLT NEWS`, 60, canvas.height - 180);
+        ctx.fillText(`${data.time || ''} • VERIFICADO POR CDLT NEWS`, 60, canvas.height - 180);
         
         ctx.fillStyle = 'rgba(37,99,235,1)';
         ctx.font = 'bold 35px sans-serif';
         ctx.fillText(`ID REF: ${newsCode}`, 60, canvas.height - 120);
 
-        // 8. Logo Central Inferior (Marca de Agua secundaria)
         ctx.globalAlpha = 0.3;
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
@@ -127,7 +123,6 @@ export const prepareShareContent = async (data: ShareData) => {
       };
       
       img.onerror = () => resolve(null);
-      // Evitar cache para asegurar carga
       img.src = data.imageUrl.includes('?') ? `${data.imageUrl}&t=${Date.now()}` : `${data.imageUrl}?t=${Date.now()}`;
     });
 
@@ -141,7 +136,6 @@ export const prepareShareContent = async (data: ShareData) => {
 export const shareToPlatform = async (platform: 'whatsapp' | 'facebook' | 'gmail', shareData: {blob: Blob | null, text: string}) => {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-  // Intentar compartir con ARCHIVO (Solo funciona en navegadores modernos/móviles)
   if (shareData.blob && navigator.share && navigator.canShare) {
     try {
       const file = new File([shareData.blob], 'CDLT_NEWS_REPORT.png', { type: 'image/png' });
@@ -160,7 +154,6 @@ export const shareToPlatform = async (platform: 'whatsapp' | 'facebook' | 'gmail
     }
   }
 
-  // Fallback: Compartir solo texto si no hay soporte para archivos o falló
   const encodedText = encodeURIComponent(shareData.text);
   
   if (platform === 'whatsapp') {
