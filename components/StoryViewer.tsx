@@ -15,8 +15,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
   const [progress, setProgress] = useState(0);
   const [showShare, setShowShare] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [imageErrorCount, setImageErrorCount] = useState(0);
-  const STORY_DURATION = 15000;
+  const STORY_DURATION = 10000;
   const progressInterval = useRef<number | null>(null);
 
   const story = stories[currentIndex];
@@ -25,7 +24,6 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
     if (currentIndex < stories.length - 1) {
       setCurrentIndex(prev => prev + 1);
       setProgress(0);
-      setImageErrorCount(0);
     } else {
       onClose();
     }
@@ -35,7 +33,6 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
       setProgress(0);
-      setImageErrorCount(0);
     }
   };
 
@@ -74,7 +71,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
         category: story.category,
         firstParagraph: story.concept.substring(0, 150) + '...',
         time: story.timestamp,
-        author: 'Corresponsalía CDLT',
+        author: 'Redacción CDLT NEW',
         imageUrl: story.image
       });
       if (content) {
@@ -90,23 +87,8 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
 
   if (!story) return null;
 
-  // Fallback visual si la imagen no carga
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    const target = e.target as HTMLImageElement;
-    if (imageErrorCount === 0) {
-      // Intento 1: Unsplash basado en tema
-      const query = (story as any).imageQuery || story.category;
-      target.src = `https://source.unsplash.com/featured/?${encodeURIComponent(query)},news`;
-      setImageErrorCount(1);
-    } else if (imageErrorCount === 1) {
-      // Intento 2: Imagen genérica de alta calidad
-      target.src = 'https://images.unsplash.com/photo-1504711432869-efd5971ee142?q=80&w=1080';
-      setImageErrorCount(2);
-    }
-  };
-
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col h-screen overflow-hidden">
+    <div className="fixed inset-0 z-[200] bg-black flex flex-col h-screen overflow-hidden">
       {/* Progress Bars */}
       <div className="absolute top-4 left-2 right-2 flex gap-1 z-20">
         {stories.map((_, idx) => (
@@ -123,28 +105,25 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
 
       {/* Header Info */}
       <div className="absolute top-8 left-4 right-4 z-20 flex justify-between items-start">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-[12px] border border-white/30 text-white shrink-0 shadow-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center font-black text-[14px] border border-white/20 text-white shrink-0 shadow-xl">
             C
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <p className="text-white text-[12px] font-black tracking-tight drop-shadow-md">
-                CDLT NEWS
+              <p className="text-white text-[13px] font-black tracking-tighter drop-shadow-md uppercase">
+                CDLT <span className="text-blue-500">NEW</span>
               </p>
-              <svg className="w-3.5 h-3.5 text-blue-500 fill-current drop-shadow-md" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-              </svg>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] px-1.5 py-0.5 bg-blue-600 text-white rounded-sm font-black uppercase tracking-wider inline-block">
+              <span className="text-[8px] px-1.5 py-0.5 bg-blue-600/30 backdrop-blur-sm text-blue-400 rounded-sm font-black uppercase tracking-wider">
                 {story.category}
               </span>
-              <span className="text-white/70 text-[10px] drop-shadow-md">• {story.timestamp}</span>
+              <span className="text-white/50 text-[9px] drop-shadow-md">• {story.timestamp}</span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button 
             onClick={() => setShowShare(true)} 
             className="text-white p-2.5 bg-black/40 rounded-full backdrop-blur-md active:scale-90 transition-all border border-white/10"
@@ -162,42 +141,37 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
       </div>
 
       {/* Media Container */}
-      <div className="absolute inset-0 w-full h-full bg-[#0a0a0c] overflow-hidden">
+      <div className="absolute inset-0 w-full h-full bg-zinc-950 overflow-hidden">
         <img 
           key={story.id}
           src={story.image} 
           alt={story.title} 
-          className="w-full h-full object-cover animate-in fade-in duration-700"
-          onError={handleImageError}
+          className="w-full h-full object-cover animate-in fade-in duration-500"
+          onError={(e) => (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1504711432869-efd5971ee142?q=80&w=1080'}
         />
-        
-        {/* Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-transparent to-black/60 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#0a0a0c]/90 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40 pointer-events-none" />
       </div>
 
       {/* Content Area */}
-      <div className="absolute bottom-10 left-0 right-0 z-10 animate-fade-in-up flex flex-col pointer-events-none px-6">
-        <h2 className="text-[26px] font-black text-white leading-[1.1] mb-5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] serif-font italic tracking-tight">
+      <div className="absolute bottom-12 left-0 right-0 z-10 flex flex-col pointer-events-none px-6">
+        <h2 className="text-[28px] font-black text-white leading-[1] mb-6 drop-shadow-2xl serif-font italic tracking-tight">
           {story.title}
         </h2>
         
-        <div className="max-h-[38vh] overflow-y-auto no-scrollbar">
-          <div className="bg-black/75 backdrop-blur-[12px] p-5 rounded-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-            <p className="text-[16px] text-zinc-100 font-bold leading-relaxed tracking-tight">
-              {story.concept}
-            </p>
-          </div>
+        <div className="bg-black/80 backdrop-blur-xl p-6 rounded-2xl border border-white/10 shadow-2xl">
+          <p className="text-[15px] text-zinc-100 font-bold leading-snug tracking-tight">
+            {story.concept}
+          </p>
         </div>
         
-        <div className="mt-5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_12px_rgba(59,130,246,0.9)]"></div>
-            <span className="text-[10px] font-black text-white/90 uppercase tracking-[0.15em] drop-shadow-md">
-              REPORTE GLOBAL CONFIRMADO
+        <div className="mt-6 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+            <span className="text-[9px] font-black text-white/70 uppercase tracking-[0.2em]">
+              CDLT NEW • REPORTAJE ESPECIAL
             </span>
           </div>
-          <div className="text-[9px] font-bold text-white/40 uppercase tracking-widest">
+          <div className="text-[8px] font-bold text-white/30 tracking-widest">
             {currentIndex + 1} / {stories.length}
           </div>
         </div>
@@ -206,8 +180,8 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
       {/* Navigation zones */}
       {!showShare && (
         <div className="absolute inset-0 z-10 flex">
-          <div className="w-1/2 h-full cursor-pointer" onClick={prevStory} />
-          <div className="w-1/2 h-full cursor-pointer" onClick={nextStory} />
+          <div className="w-1/3 h-full cursor-pointer" onClick={prevStory} />
+          <div className="w-2/3 h-full cursor-pointer" onClick={nextStory} />
         </div>
       )}
 
@@ -218,16 +192,6 @@ const StoryViewer: React.FC<StoryViewerProps> = ({ stories, initialIndex, onClos
           isGenerating={isGenerating}
         />
       )}
-
-      <style>{`
-        @keyframes fade-in-up {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in-up {
-          animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-      `}</style>
     </div>
   );
 };
