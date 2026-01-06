@@ -1,10 +1,10 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { NewsStory, MainNews } from "../types";
 
 const HISTORY_KEY = 'cdlt_news_history_v4';
 const STORIES_HISTORY_KEY = 'cdlt_stories_history_v4';
-const REFRESH_INTERVAL = 180000; // 3 minutos para mayor frescura
+const REFRESH_INTERVAL = 240000; // 4 minutos
 
 const mergeAndUnique = <T extends { title: string }>(oldData: T[], newData: T[], limit = 50): T[] => {
   const seenTitles = new Set();
@@ -19,7 +19,13 @@ const mergeAndUnique = <T extends { title: string }>(oldData: T[], newData: T[],
 };
 
 export const fetchMainNews = async (forceRefresh = false): Promise<MainNews[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.error("API_KEY no detectada.");
+    return [];
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   const cachedHistory = localStorage.getItem(HISTORY_KEY);
   let history: MainNews[] = [];
   let lastUpdate = 0;
@@ -32,7 +38,6 @@ export const fetchMainNews = async (forceRefresh = false): Promise<MainNews[]> =
     } catch(e) {}
   }
 
-  // Si no forzamos y los datos son recientes, devolvemos cache inmediatamente
   if (!forceRefresh && (Date.now() - lastUpdate < REFRESH_INTERVAL) && history.length > 0) {
     return history;
   }
@@ -40,7 +45,7 @@ export const fetchMainNews = async (forceRefresh = false): Promise<MainNews[]> =
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `REPORTE URGENTE: Genera las 15 noticias y novedades más impactantes y reales de los últimos minutos. Enfócate en primicias. JSON: [{ "id": string, "title": string, "summary": string, "content": string, "imageUrl": string, "date": string, "author": string, "category": string }]`,
+      contents: `REPORTE URGENTE: Genera las 15 noticias y novedades más impactantes y reales de este preciso instante. Enfócate en impacto mundial. JSON: [{ "id": string, "title": string, "summary": string, "content": string, "imageUrl": string, "date": string, "author": string, "category": string }]`,
       config: { 
         tools: [{ googleSearch: {} }], 
         responseMimeType: "application/json" 
@@ -55,13 +60,16 @@ export const fetchMainNews = async (forceRefresh = false): Promise<MainNews[]> =
     }
     return history;
   } catch (error) {
-    console.error("Error API:", error);
+    console.warn("API falló, usando historial local.");
     return history;
   }
 };
 
 export const fetchLatestStories = async (forceRefresh = false): Promise<NewsStory[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) return [];
+  
+  const ai = new GoogleGenAI({ apiKey });
   const cachedHistory = localStorage.getItem(STORIES_HISTORY_KEY);
   let history: NewsStory[] = [];
   let lastUpdate = 0;
